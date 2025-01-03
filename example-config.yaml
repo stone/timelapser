@@ -1,0 +1,24 @@
+cameras:
+  - name: "Front Door"
+    snapshotUrl: "https://camera1.example.com/snapshot"
+    auth:
+      type: "basic"
+      username: "admin"
+      password: "password123"
+
+  - name: "Back Yard"
+    snapshotUrl: "https://camera2.example.com/snapshot"
+    auth:
+      type: "bearer"
+      token: "your-bearer-token"
+
+  - name: "Driveway"
+    snapshotUrl: "https://camera3.example.com/snapshot"
+    auth:
+      type: "query"
+      params:
+        api_key: "your-api-key"
+        token: "access-token"
+
+interval: 300  # snapshot interval in seconds
+outputDir: "./target"
