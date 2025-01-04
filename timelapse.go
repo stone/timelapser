@@ -21,13 +21,13 @@ func createTimelapse(config *Config) error {
 
 		// Skip if camera directory doesn't exist
 		if _, err := os.Stat(folderPath); os.IsNotExist(err) {
-			fmt.Printf("No images found for camera %s, skipping\n", camConfig.Name)
+			logger.Info("No snapshots found for camera", "name", camConfig.Name, "folder", folderPath)
 			continue
 		}
 
 		entries, err := os.ReadDir(folderPath)
 		if err != nil {
-			fmt.Printf("Error reading directory for camera %s: %v\n", camConfig.Name, err)
+			logger.Info("Error reading directory for camera", "name", camConfig.Name, "error", err, "continue", true)
 			continue
 		}
 
@@ -41,7 +41,7 @@ func createTimelapse(config *Config) error {
 		}
 
 		if len(imageFiles) == 0 {
-			fmt.Printf("No images found for camera %s\n", camConfig.Name)
+			logger.Info("No snapshots found for camera", "name", camConfig.Name)
 			continue
 		}
 
@@ -59,10 +59,8 @@ func createTimelapse(config *Config) error {
 
 		var fileList strings.Builder
 		for _, file := range imageFiles {
-			// fileList.WriteString(fmt.Sprintf("file '%s'\n", filepath.Join(folderPath, file)))
 			fileList.WriteString(fmt.Sprintf("file '%s'\n", filepath.Join(name, file)))
-			// fileList.WriteString(fmt.Sprintf("file '%s'\n", file))
-			fileList.WriteString(fmt.Sprintf("duration 0.0416667\n")) // 1/24 for 24fps
+			fileList.WriteString("duration 0.0416667\n") // 1/24 for 24fps
 		}
 		// Add last frame one more time to ensure last image is visible
 		fileList.WriteString(fmt.Sprintf("file '%s'\n", filepath.Join(folderPath, imageFiles[len(imageFiles)-1])))
@@ -71,7 +69,7 @@ func createTimelapse(config *Config) error {
 			return fmt.Errorf("failed to write file list for %s: %v", camConfig.Name, err)
 		}
 
-		fmt.Printf("Creating timelapse for %s (%d images)\n", camConfig.Name, len(imageFiles))
+		logger.Info("Creating timelapse for camera", "name", camConfig.Name, "snapshots", len(imageFiles))
 
 		// Run FFmpeg command
 		cmd := exec.Command("ffmpeg",
@@ -87,27 +85,29 @@ func createTimelapse(config *Config) error {
 			outputPath,
 		)
 
-		// fmt.Println(cmd)
+		logger.Debug("ffmpeg command", "exec", cmd.String())
 
 		if output, err := cmd.CombinedOutput(); err != nil {
-			fmt.Printf("FFmpeg error for %s: %v\nOutput: %s\n", camConfig.Name, err, output)
+			logger.Info("FFmpeg error creating timelapse", "name", camConfig.Name, "err", err, "output", output)
 			continue
 		}
 
 		// Cleanup
 		if err := os.Remove(listPath); err != nil {
-			fmt.Printf("Warning: Failed to remove temporary file list for %s: %v\n", camConfig.Name, err)
+			logger.Info("Failed to remove temporary timelampse file list", "name", camConfig.Name, "err", err)
 		}
 
-		fmt.Printf("Timelapse created for %s at %s\n", camConfig.Name, outputPath)
+		logger.Info("Timelampse created for camera", "name", camConfig.Name, "output", outputPath)
+
 		// Optionally remove original images
 		if camConfig.Delete {
+			logger.Info("Removing snapshots", "name", camConfig.Name)
 			for _, file := range imageFiles {
 				if err := os.Remove(filepath.Join(folderPath, file)); err != nil {
-					fmt.Printf("Warning: Failed to remove %s: %v\n", file, err)
+					logger.Info("Failed to remove snapshot for camera", "name", camConfig.Name, "err", err)
 				}
 			}
-			fmt.Printf("Original images removed for %s\n", camConfig.Name)
+			logger.Info("Snapshot images removed for camera", "name", camConfig.Name)
 		}
 	}
 
