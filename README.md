@@ -78,3 +78,23 @@ For capture intervals, some alternative useful values:
 - 3 hours: Good for seasonal changes
 - 4 hours: Nice for garden/plant growth
 - 12 hours: Captures day/night cycles effectively
+
+
+## How to integrate timelapser with Home Assistant
+
+Integration with Home Assistant is easy by using the the Home Assistant Local
+Media feautre.
+
+0 8 * * * mv /media/timelapse/*.mp4 /usr/share/hassio/media
+
+After this the timelapses are available every day at 8 AM UTC to be viewed using
+the Local Media browser, or even better using the Gallery card like this:
+
+```yaml
+type: 'custom:gallery-card'
+entities:
+  - path: 'media-source://media_source/media/'
+    recursive: true
+menu_alignment: Hidden
+file_name_format: '*.mp4'
+```
