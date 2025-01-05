@@ -14,3 +14,4 @@ outputDir: "/tmp/timelapser"
 interval: "*/5 * * * *"
 timelapseInterval: "* 24,12 * * * *"
 frameDuration: 0.041667
+ffmpeg_template: "ffmpeg -f concat -safe 0 -i {{.ListPath}} -vf fps=24,format=yuv420p -c:v libx264 -preset medium -crf 23 -movflags +faststart -y {{.OutputPath}}"

@@ -1,3 +1,30 @@
+## Configuration
+
+Example configuration.
+
+```yaml
+cameras:
+  - name: "Riksgransen"         # Name of the camera, if using spaces in name it will be converted: Hello world -> helloWorld
+    snapshotUrl: "https://.."   # URL
+    auth:                       # If snapshotUrl need authentication
+      type: "basic"             # Can be basic or bearer
+      username: "user"          # Username (basic auth)
+      password: "pass"          # Password (basic auth)
+    interval: "*/10 * * * *"    # Snapshot interval cron expression
+    timelapseInterval: "* 24,12 * * * *" # Timelapse generaton cron expression interval
+    delete: true                # Delete snapshot images after timelapse generation
+    frameDuration: 0.041667     # Frame duration for each snapshot
+    ffmpeg_template: "ffmpeg ... -i {{.ListPath}} ... -y {{.OutputPath}}" # ffmpeg command used for timelapse generation.
+
+# Where to write snapshots and timelapses
+outputDir: "/tmp/timelapser"
+# Defaults used if not set per camera
+interval: "*/5 * * * *"
+timelapseInterval: "* 24,12 * * * *"
+frameDuration: 0.041667
+ffmpeg_template: "ffmpeg -f concat -safe 0 -i {{.ListPath}} -vf fps=24,format=yuv420p -c:v libx264 -preset medium -crf 23 -movflags +faststart -y {{.OutputPath}}"
+```
+
 ## Snapshot intervals and frame durations
 
 A good default is  0.04167
