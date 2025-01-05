@@ -22,6 +22,7 @@ type CameraConfig struct {
 	Interval          string     `yaml:"interval"`
 	TimelapseInterval string     `yaml:"timelapseInterval"`
 	FrameDuration     float64    `yaml:"frameDuration"`
+	FfmpegTemplate    string     `yaml:"ffmpeg_template"`
 }
 
 type Config struct {
@@ -30,6 +31,7 @@ type Config struct {
 	Interval          string         `yaml:"interval"`
 	TimelapseInterval string         `yaml:"timelapseInterval"`
 	FrameDuration     float64        `yaml:"frameDuration"`
+	FfmpegTemplate    string         `yaml:"ffmpeg_template"`
 }
 
 func loadConfig(path string) (*Config, error) {
@@ -44,6 +46,7 @@ func loadConfig(path string) (*Config, error) {
 		Interval:          "*/5 * * * *",
 		TimelapseInterval: "*/60 * * * *",
 		FrameDuration:     0.0416667,
+		FfmpegTemplate:    "ffmpeg -f concat -safe 0 -i {{.ListPath}} -vf fps=24,format=yuv420p -c:v libx264 -preset medium -crf 23 -movflags +faststart -y {{.OutputPath}}",
 	}
 	if err := yaml.Unmarshal(data, &config); err != nil {
 		return nil, fmt.Errorf("error parsing config file: %v", err)
@@ -65,6 +68,12 @@ func loadConfig(path string) (*Config, error) {
 			camConfig.FrameDuration = config.FrameDuration
 		}
 
+		if camConfig.FfmpegTemplate == "" {
+			logger.Debug("Setting defaults for camera", "name", camConfig.Name,
+				"from", camConfig.FfmpegTemplate,
+				"to", config.FfmpegTemplate)
+			camConfig.FfmpegTemplate = config.FfmpegTemplate
+		}
 	}
 
 	return &config, nil

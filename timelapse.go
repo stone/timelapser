@@ -1,14 +1,45 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
+	"html/template"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/mattn/go-shellwords"
 )
+
+func buildFfmpegCommand(camConfig *CameraConfig, listPath, outputPath string) ([]string, error) {
+	tmpl, err := template.New("ffmpeg").Parse(camConfig.FfmpegTemplate)
+	if err != nil {
+		return nil, err
+	}
+
+	var cmdBuffer bytes.Buffer
+	data := map[string]string{
+		"ListPath":   listPath,
+		"OutputPath": outputPath,
+	}
+	if err := tmpl.Execute(&cmdBuffer, data); err != nil {
+		return nil, err
+	}
+
+	commandString := cmdBuffer.String()
+	log.Println("Generated command:", commandString)
+
+	// Use shellwords to parse commandString into arguments
+	args, err := shellwords.Parse(commandString)
+	if err != nil {
+		return nil, err
+	}
+	return args, nil
+}
 
 func createTimelapse(camConfig *CameraConfig, outputdir string) error {
 	if _, err := exec.LookPath("ffmpeg"); err != nil {
@@ -69,19 +100,24 @@ func createTimelapse(camConfig *CameraConfig, outputdir string) error {
 
 	logger.Info("Creating timelapse for camera", "name", camConfig.Name, "snapshots", len(imageFiles))
 
+	cmdBuf, err := buildFfmpegCommand(camConfig, listPath, outputPath)
+	if err != nil {
+		return fmt.Errorf("error building ffmpeg command: %s", err)
+	}
+	cmd := exec.Command("ffmpeg", cmdBuf...)
 	// Run FFmpeg command
-	cmd := exec.Command("ffmpeg",
-		"-f", "concat",
-		"-safe", "0",
-		"-i", listPath,
-		"-vf", "fps=24,format=yuv420p", // Ensure compatibility
-		"-c:v", "libx264",
-		"-preset", "medium",
-		"-crf", "23",
-		"-movflags", "+faststart",
-		"-y",
-		outputPath,
-	)
+	// cmd := exec.Command("ffmpeg",
+	// 	"-f", "concat",
+	// 	"-safe", "0",
+	// 	"-i", listPath,
+	// 	"-vf", "fps=24,format=yuv420p", // Ensure compatibility
+	// 	"-c:v", "libx264",
+	// 	"-preset", "medium",
+	// 	"-crf", "23",
+	// 	"-movflags", "+faststart",
+	// 	"-y",
+	// 	outputPath,
+	// )
 
 	logger.Debug("ffmpeg command", "exec", cmd.String())
 

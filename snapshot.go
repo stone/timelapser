@@ -17,7 +17,7 @@ func takeCameraSnapshot(camconfig *CameraConfig, outdir string) error {
 	}
 	camera := NewCamera(*camconfig)
 	name := toCamelCase(camconfig.Name)
-	logger.Info("Retrieving snapshot", "name", camconfig.Name)
+	logger.Debug("Retrieving snapshot", "name", camconfig.Name)
 
 	cameraDir := filepath.Join(outdir, name)
 	if err := os.MkdirAll(cameraDir, 0o755); err != nil {
@@ -47,7 +47,7 @@ func takeSnapshot(config *Config) error {
 	for _, camConfig := range config.Cameras {
 		camera := NewCamera(camConfig)
 		name := toCamelCase(camConfig.Name)
-		logger.Info("Retrieving snapshot", "name", camConfig.Name)
+		logger.Debug("Retrieving snapshot", "name", camConfig.Name)
 
 		cameraDir := filepath.Join(config.OutputDir, name)
 		if err := os.MkdirAll(cameraDir, 0o755); err != nil {
