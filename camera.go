@@ -7,9 +7,14 @@ import (
 	"net/http"
 )
 
+// HTTPClient interface for mocking in tests
+type HTTPClient interface {
+	Do(req *http.Request) (*http.Response, error)
+}
+
 type Camera struct {
 	config CameraConfig
-	client *http.Client
+	client HTTPClient
 }
 
 func NewCamera(config CameraConfig) *Camera {

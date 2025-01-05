@@ -6,6 +6,9 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 func takeCameraSnapshot(camconfig *CameraConfig, outdir string) error {
@@ -81,8 +84,11 @@ func toCamelCase(s string) string {
 	var result strings.Builder
 	result.WriteString(strings.ToLower(words[0]))
 
+	caser := cases.Title(language.English)
+
 	for _, word := range words[1:] {
-		result.WriteString(strings.Title(word))
+		// result.WriteString(strings.Title(word))
+		result.WriteString(caser.String(word))
 	}
 
 	return result.String()

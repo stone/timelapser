@@ -87,7 +87,7 @@ func createTimelapse(camConfig *CameraConfig, outputdir string) error {
 
 	if output, err := cmd.CombinedOutput(); err != nil {
 		// TODO: Move this logger.Info("FFmpeg error creating timelapse", "name", camConfig.Name, "err", err, "output", output)
-		return fmt.Errorf("error creating ffmpeg timelapse: %s (%s)", err, output)
+		return fmt.Errorf("error creating ffmpeg timelapse: %s (%s)", err, string(output))
 	}
 
 	// Cleanup
