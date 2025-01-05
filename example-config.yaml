@@ -1,24 +1,16 @@
 cameras:
-  - name: "Front Door"
-    snapshotUrl: "https://camera1.example.com/snapshot"
-    auth:
-      type: "basic"
-      username: "admin"
-      password: "password123"
+  - name: "Riksgransen"
+    snapshotUrl: "https://api.trafikinfo.trafikverket.se/v2/Images/TrafficFlowCamera_39636488.Jpeg?type=fullsize&maxage=140"
+    interval: "*/10 * * * *"
+    delete: true
 
-  - name: "Back Yard"
-    snapshotUrl: "https://camera2.example.com/snapshot"
-    auth:
-      type: "bearer"
-      token: "your-bearer-token"
+  - name: "Maldives"
+    snapshotUrl: "https://cdn.skylinewebcams.com/live814.webp"
+    interval: "*/1 * * * *"
+    timelapseInterval: "45 0,12,17 * * *"
+    delete: false
 
-  - name: "Driveway"
-    snapshotUrl: "https://camera3.example.com/snapshot"
-    auth:
-      type: "query"
-      params:
-        api_key: "your-api-key"
-        token: "access-token"
-
-interval: 300  # snapshot interval in seconds
-outputDir: "./target"
+outputDir: "/tmp/timelapser"
+interval: "*/5 * * * *"
+timelapseInterval: "* 24,12 * * * *"
+frameDuration: 0.041667
