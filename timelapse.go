@@ -51,13 +51,11 @@ func createTimelapse(camConfig *CameraConfig, outputdir string) error {
 
 	// Skip if camera directory doesn't exist
 	if _, err := os.Stat(folderPath); os.IsNotExist(err) {
-		// TODO: Move this logger.Info("No snapshots found for camera", "name", camConfig.Name, "folder", folderPath)
 		return fmt.Errorf("no snapshots found for camera: %s", err)
 	}
 
 	entries, err := os.ReadDir(folderPath)
 	if err != nil {
-		// TODO: Move this logger.Info("Error reading directory for camera", "name", camConfig.Name, "error", err, "continue", true)
 		return fmt.Errorf("error reading directory for camera: %s", err)
 	}
 
@@ -122,7 +120,6 @@ func createTimelapse(camConfig *CameraConfig, outputdir string) error {
 	logger.Debug("ffmpeg command", "exec", cmd.String())
 
 	if output, err := cmd.CombinedOutput(); err != nil {
-		// TODO: Move this logger.Info("FFmpeg error creating timelapse", "name", camConfig.Name, "err", err, "output", output)
 		return fmt.Errorf("error creating ffmpeg timelapse: %s (%s)", err, string(output))
 	}
 
@@ -197,7 +194,7 @@ func createAllTimelapse(config *Config) error {
 		var fileList strings.Builder
 		for _, file := range imageFiles {
 			fileList.WriteString(fmt.Sprintf("file '%s'\n", filepath.Join(name, file)))
-			fileList.WriteString("duration 0.0416667\n") // 1/24 for 24fps
+			fileList.WriteString(fmt.Sprintf("duration %f\n", camConfig.FrameDuration)) // 1/24 for 24fps
 		}
 		// Add last frame one more time to ensure last image is visible
 		fileList.WriteString(fmt.Sprintf("file '%s'\n", filepath.Join(folderPath, imageFiles[len(imageFiles)-1])))
