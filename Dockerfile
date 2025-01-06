@@ -16,7 +16,7 @@ LABEL org.opencontainers.image.source="https://github.com/stone/timelapser" \
       org.opencontainers.image.version="1.0.0"
 
 # Install ffmpeg and required runtime dependencies
-RUN apk add --no-cache ffmpeg ca-certificates tzdata && \
+RUN apk add --no-cache ffmpeg ffmpeg-libs ca-certificates tzdata && \
   adduser -D -H -h /app timelapser
 WORKDIR /app
 COPY --from=builder /app/timelapser .
