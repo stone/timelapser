@@ -12,6 +12,12 @@ import (
 	"github.com/robfig/cron/v3"
 )
 
+// Build information. Populated at build-time using -ldflags
+var (
+	Version   string
+	GitCommit string
+)
+
 var logger *slog.Logger
 
 func main() {
@@ -21,7 +27,13 @@ func main() {
 	flagLogLevel := flag.String("log", "INFO", "Log level (DEBUG, INFO)")
 	flagListCameras := flag.Bool("list", false, "List configured cameras")
 	flagGetConfig := flag.Bool("example-config", false, "Print example configuration to stdout")
+	flagGetVersion := flag.Bool("version", false, "Print version and exit")
 	flag.Parse()
+
+	if *flagGetVersion {
+		fmt.Printf("timelapser %s (%s)\n", Version, GitCommit)
+		os.Exit(0)
+	}
 
 	if *flagGetConfig {
 		fmt.Println(generateExampleConfig())
@@ -63,6 +75,8 @@ func main() {
 		os.Exit(0)
 	}
 
+	logger.Info("Starting timelapser", "version", Version, "git", GitCommit)
+
 	// Take snapshot of cameras and quit
 	if *flagSnapshot {
 		if err := takeSnapshot(config); err != nil {
@@ -102,7 +116,7 @@ func main() {
 
 		logger.Info("Scheduling timelapse generation", "name", camConfig.Name, "timelapseInterval", timelapseInterval)
 		crn.AddFunc(timelapseInterval, func() {
-			if err := createTimelapse(&camConfig, config.OutputDir); err != nil {
+			if err := CreateTimelapse(&camConfig, config.OutputDir); err != nil {
 				logger.Error("Error generating timelapse", "name", camConfig.Name, "error", err)
 			}
 		})

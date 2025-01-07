@@ -3,7 +3,6 @@ module github.com/stone/timelapser
 go 1.23.4
 
 require (
-	github.com/davecgh/go-spew v1.1.1
 	github.com/lmittmann/tint v1.0.6
 	github.com/mattn/go-isatty v0.0.20
 	github.com/robfig/cron/v3 v3.0.1
