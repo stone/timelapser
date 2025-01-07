@@ -3,6 +3,8 @@ BINARY_NAME=timelapser
 DOCKER_REPO=stone
 IMAGE_NAME=$(DOCKER_REPO)/$(BINARY_NAME)
 GIT_COMMIT=$(shell git rev-parse --short HEAD)
+UUID := $(shell uuidgen)
+DEVCONTAINER=ttl.sh/$(BINARY_NAME)-$(UUID):1h
 VERSION?=1.0.0
 
 # Go build flags
@@ -34,6 +36,11 @@ docker-build:
 		-t $(IMAGE_NAME):$(VERSION) \
 		-t $(IMAGE_NAME):latest \
 		.
+
+# Push devcontainer to ttl.sh
+docker-push-devcontainer:
+	docker tag $(IMAGE_NAME):$(VERSION) $(DEVCONTAINER)
+	docker push $(DEVCONTAINER)
 
 # Push docker image
 docker-push:

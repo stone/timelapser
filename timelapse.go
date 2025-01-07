@@ -205,24 +205,16 @@ func createAllTimelapse(config *Config) error {
 
 		logger.Info("Creating timelapse for camera", "name", camConfig.Name, "snapshots", len(imageFiles))
 
-		// Run FFmpeg command
-		cmd := exec.Command("ffmpeg",
-			"-f", "concat",
-			"-safe", "0",
-			"-i", listPath,
-			"-vf", "fps=24,format=yuv420p", // Ensure compatibility
-			"-c:v", "libx264",
-			"-preset", "medium",
-			"-crf", "23",
-			"-movflags", "+faststart",
-			"-y",
-			outputPath,
-		)
+		cmdBuf, err := buildFfmpegCommand(&camConfig, listPath, outputPath)
+		if err != nil {
+			return fmt.Errorf("error building ffmpeg command: %s", err)
+		}
+		cmd := exec.Command("ffmpeg", cmdBuf...)
 
 		logger.Debug("ffmpeg command", "exec", cmd.String())
 
 		if output, err := cmd.CombinedOutput(); err != nil {
-			logger.Info("FFmpeg error creating timelapse", "name", camConfig.Name, "err", err, "output", output)
+			logger.Info("FFmpeg error creating timelapse", "name", camConfig.Name, "err", err, "output", string(output))
 			continue
 		}
 
