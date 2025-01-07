@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"log/slog"
 	"os"
 
@@ -19,7 +20,13 @@ func main() {
 	flagTimelapse := flag.Bool("timelapse", false, "Create timelapse for all configured cameras and quit")
 	flagLogLevel := flag.String("log", "INFO", "Log level (DEBUG, INFO)")
 	flagListCameras := flag.Bool("list", false, "List configured cameras")
+	flagGetConfig := flag.Bool("example-config", false, "Print example configuration to stdout")
 	flag.Parse()
+
+	if *flagGetConfig {
+		fmt.Println(generateExampleConfig())
+		os.Exit(0)
+	}
 
 	crn := cron.New()
 

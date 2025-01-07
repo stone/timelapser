@@ -7,22 +7,30 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+const (
+	defaultOutputDir         = "/tmp"
+	defaultInterval          = "*/5 * * * *"
+	defaultTimelapseInterval = "*/60 * * * *"
+	defaultFrameDuration     = 0.0416667
+	defaultFfmpegTemplate    = "ffmpeg -f concat -safe 0 -i {{.ListPath}} -vf fps=24,format=yuv420p -c:v libx264 -preset medium -crf 23 -movflags +faststart -y {{.OutputPath}}"
+)
+
 type AuthConfig struct {
-	Type     string `yaml:"type"`     // basic, bearer
-	Username string `yaml:"username"` // for basic auth
-	Password string `yaml:"password"` // for basic auth
-	Token    string `yaml:"token"`    // for bearer auth
+	Type     string `yaml:"type,omitempty"`     // basic, bearer
+	Username string `yaml:"username,omitempty"` // for basic auth
+	Password string `yaml:"password,omitempty"` // for basic auth
+	Token    string `yaml:"token,omitempty"`    // for bearer auth
 }
 
 type CameraConfig struct {
 	Name              string     `yaml:"name"`
 	SnapshotURL       string     `yaml:"snapshotUrl"`
-	Auth              AuthConfig `yaml:"auth"`
+	Auth              AuthConfig `yaml:"auth,omitempty"`
 	Delete            bool       `yaml:"delete"`
-	Interval          string     `yaml:"interval"`
-	TimelapseInterval string     `yaml:"timelapseInterval"`
-	FrameDuration     float64    `yaml:"frameDuration"`
-	FfmpegTemplate    string     `yaml:"ffmpeg_template"`
+	Interval          string     `yaml:"interval,omitempty"`
+	TimelapseInterval string     `yaml:"timelapseInterval,omitempty"`
+	FrameDuration     float64    `yaml:"frameDuration,omitempty"`
+	FfmpegTemplate    string     `yaml:"ffmpeg_template,omitempty"`
 }
 
 type Config struct {
@@ -34,6 +42,37 @@ type Config struct {
 	FfmpegTemplate    string         `yaml:"ffmpeg_template"`
 }
 
+func newDefaultConfig() Config {
+	// Create a new Config struct with default values
+	return Config{
+		OutputDir:         defaultOutputDir,
+		Interval:          defaultInterval,
+		TimelapseInterval: defaultTimelapseInterval,
+		FrameDuration:     defaultFrameDuration,
+		FfmpegTemplate:    defaultFfmpegTemplate,
+	}
+}
+
+func generateExampleConfig() string {
+	config := newDefaultConfig()
+	// Create example CameraConfig struct with default values
+	cameraConfig := CameraConfig{
+		Name:        "camera1",
+		SnapshotURL: "http://localhost:8080/snapshot",
+		Auth:        AuthConfig{Type: "basic", Username: "admin", Password: "admin"},
+		Delete:      false,
+	}
+	config.Cameras = append(config.Cameras, cameraConfig)
+
+	data, err := yaml.Marshal(config)
+	if err != nil {
+		logger.Error("error creating example configuration", "error", err)
+		os.Exit(1)
+	}
+
+	return string(data)
+}
+
 func loadConfig(path string) (*Config, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -41,19 +80,18 @@ func loadConfig(path string) (*Config, error) {
 	}
 
 	// Set defaults
-	config := Config{
-		OutputDir:         "/tmp",
-		Interval:          "*/5 * * * *",
-		TimelapseInterval: "*/60 * * * *",
-		FrameDuration:     0.0416667,
-		FfmpegTemplate:    "ffmpeg -f concat -safe 0 -i {{.ListPath}} -vf fps=24,format=yuv420p -c:v libx264 -preset medium -crf 23 -movflags +faststart -y {{.OutputPath}}",
-	}
+	config := newDefaultConfig()
+
 	if err := yaml.Unmarshal(data, &config); err != nil {
 		return nil, fmt.Errorf("error parsing config file: %v", err)
 	}
 
-	// Add defaults if not set for Cameras
-	for _, camConfig := range config.Cameras {
+	return &config, nil
+}
+
+func applyDefaultsToCameras(config *Config) error {
+	for i := range config.Cameras {
+		camConfig := &config.Cameras[i]
 		if camConfig.TimelapseInterval == "" {
 			logger.Debug("Setting defaults for camera", "name", camConfig.Name,
 				"from", camConfig.TimelapseInterval,
@@ -74,7 +112,7 @@ func loadConfig(path string) (*Config, error) {
 				"to", config.FfmpegTemplate)
 			camConfig.FfmpegTemplate = config.FfmpegTemplate
 		}
-	}
 
-	return &config, nil
+	}
+	return nil
 }
