@@ -17,7 +17,7 @@ var logger *slog.Logger
 func main() {
 	flagConfigPath := flag.String("config", "config.yaml", "path to config file")
 	flagSnapshot := flag.Bool("snapshot", false, "Do a single snapshot of all configured cameras")
-	flagTimelapse := flag.Bool("timelapse", false, "Create timelapse for all configured cameras and quit")
+	flagTimelapse := flag.Bool("timelapse", false, "Create timelapse for all configured cameras and quit, (images not deleted)")
 	flagLogLevel := flag.String("log", "INFO", "Log level (DEBUG, INFO)")
 	flagListCameras := flag.Bool("list", false, "List configured cameras")
 	flagGetConfig := flag.Bool("example-config", false, "Print example configuration to stdout")

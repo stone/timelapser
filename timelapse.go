@@ -123,6 +123,8 @@ func createTimelapse(camConfig *CameraConfig, outputdir string) error {
 
 func createAllTimelapse(config *Config) error {
 	for _, camConfig := range config.Cameras {
+		// we do not want to delete the original images when manually creating timelapse.
+		camConfig.Delete = false
 		if err := createTimelapse(&camConfig, config.OutputDir); err != nil {
 			return err
 		}
