@@ -67,14 +67,17 @@ func CreateTimelapse(cfg *CameraConfig, outputDir string) error {
 	}
 	defer cleanupFile(listPath)
 
+	t1 := time.Now()
 	if err := executeFFmpeg(cfg, listPath, outputPath); err != nil {
 		return err
 	}
+	elapsed := time.Since(t1)
 
 	logger.Info("timelapse created",
 		"camera", cfg.Name,
 		"output", outputPath,
 		"snapshots", len(imageFiles),
+		"duration", elapsed,
 	)
 
 	if cfg.Delete {
