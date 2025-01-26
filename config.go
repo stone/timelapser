@@ -25,6 +25,7 @@ type AuthConfig struct {
 type CameraConfig struct {
 	Name              string     `yaml:"name"`
 	SnapshotURL       string     `yaml:"snapshotUrl"`
+	Insecure          bool       `yaml:"insecure"`
 	Auth              AuthConfig `yaml:"auth,omitempty"`
 	Delete            bool       `yaml:"delete"`
 	Interval          string     `yaml:"interval,omitempty"`
