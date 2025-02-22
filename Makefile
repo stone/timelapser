@@ -30,6 +30,7 @@ clean:
 # Build docker image
 docker-build:
 	docker build \
+		--pull \
 		--build-arg VERSION=$(VERSION) \
 		--build-arg GIT_COMMIT=$(GIT_COMMIT) \
 		--label org.opencontainers.image.created=$(shell date -u +'%Y-%m-%dT%H:%M:%SZ') \
