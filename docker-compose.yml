@@ -1,0 +1,17 @@
+services:
+  timelapser:
+    image: ghcr.io/stone/timelapser:latest
+    container_name: timelapser
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      - TZ=Europe/Stockholm
+    command: -config /app/config.yaml
+    volumes:
+      - ./timelapser:/timelapser:rw
+      - ./config.yaml:/app/config.yaml:ro
+    # Optional: set resource limits
+    mem_limit: 512m
+    cpus: 0.5
+    user: "1000:1000"

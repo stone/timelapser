@@ -1,6 +1,54 @@
+# Timelapser
+
+Create timelapses from HTTP-based camera snapshots. This tool periodically
+fetches images from HTTP cameras and compiles them into timelapse videos.
+
+## Quick Start
+
+1. Create a directory for your configuration and data:
+```bash
+mkdir -p timelapser
+```
+
+2. Create your configuration file at `config.yaml`:
+
+3. Create a `docker-compose.yml` file:
+```yaml
+services:
+  timelapser:
+    image: ghcr.io/stone/timelapser:latest
+    container_name: timelapser
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      - TZ=Europe/Stockholm
+    command: -config /app/config.yaml
+    volumes:
+      - ./timelapser:/timelapser:rw
+      - ./config.yaml:/app/config.yaml:ro
+    # Optional: set resource limits
+    mem_limit: 512m
+    cpus: 0.5
+    user: "1000:1000"
+```
+
+4. Start the service:
+```bash
+docker compose up -d
+```
+
 ## Configuration
 
-Example configuration.
+### Volume Mounts
+- `timelapser`: Directory where captured images and generated timelapses are stored
+- `/app/config.yaml`: Configuration file (mounted read-only)
+
+### Environment Variables
+- `TZ`: Timezone (default: Europe/Stockholm)
+
+
+# Configuration
 
 ```yaml
 cameras:
@@ -17,7 +65,7 @@ cameras:
     ffmpeg_template: "ffmpeg ... -i {{.ListPath}} ... -y {{.OutputPath}}" # ffmpeg command used for timelapse generation.
 
 # Where to write snapshots and timelapses
-outputDir: "/tmp/timelapser"
+outputDir: "/timelapser"
 # Defaults used if not set per camera
 interval: "*/5 * * * *"
 timelapseInterval: "* 24,12 * * * *"
