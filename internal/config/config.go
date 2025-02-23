@@ -1,7 +1,8 @@
-package main
+package config
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 
 	"gopkg.in/yaml.v3"
@@ -41,6 +42,7 @@ type Config struct {
 	TimelapseInterval string         `yaml:"timelapseInterval"`
 	FrameDuration     float64        `yaml:"frameDuration"`
 	FFmpegTemplate    string         `yaml:"ffmpeg_template"`
+	Logger            *slog.Logger
 }
 
 func newDefaultConfig() Config {
@@ -54,7 +56,7 @@ func newDefaultConfig() Config {
 	}
 }
 
-func generateExampleConfig() string {
+func NewExampleConfig() string {
 	config := newDefaultConfig()
 	// Create example CameraConfig struct with default values
 	cameraConfig := CameraConfig{
@@ -67,14 +69,13 @@ func generateExampleConfig() string {
 
 	data, err := yaml.Marshal(config)
 	if err != nil {
-		logger.Error("error creating example configuration", "error", err)
-		os.Exit(1)
+		return fmt.Sprintf("error creating example configuration: %s", err.Error())
 	}
 
 	return string(data)
 }
 
-func loadConfig(path string) (*Config, error) {
+func LoadConfig(path string, logger *slog.Logger) (*Config, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("error reading config file: %v", err)
@@ -82,6 +83,8 @@ func loadConfig(path string) (*Config, error) {
 
 	// Set defaults
 	config := newDefaultConfig()
+	// Attach logger to our config, not amazing but sometimes you get to be lazy
+	config.Logger = logger
 
 	if err := yaml.Unmarshal(data, &config); err != nil {
 		return nil, fmt.Errorf("error parsing config file: %v", err)
@@ -98,21 +101,21 @@ func applyDefaultsToCameras(config *Config) error {
 	for i := range config.Cameras {
 		camConfig := &config.Cameras[i]
 		if camConfig.TimelapseInterval == "" {
-			logger.Debug("Setting defaults for camera", "name", camConfig.Name,
+			config.Logger.Debug("Setting defaults for camera", "name", camConfig.Name,
 				"from", camConfig.TimelapseInterval,
 				"to", config.TimelapseInterval)
 			camConfig.TimelapseInterval = config.TimelapseInterval
 		}
 
 		if camConfig.FrameDuration == 0 {
-			logger.Debug("Setting defaults for camera", "name", camConfig.Name,
+			config.Logger.Debug("Setting defaults for camera", "name", camConfig.Name,
 				"from", camConfig.FrameDuration,
 				"to", config.FrameDuration)
 			camConfig.FrameDuration = config.FrameDuration
 		}
 
 		if camConfig.FFmpegTemplate == "" {
-			logger.Debug("Setting defaults for camera", "name", camConfig.Name,
+			config.Logger.Debug("Setting defaults for camera", "name", camConfig.Name,
 				"from", camConfig.FFmpegTemplate,
 				"to", config.FFmpegTemplate)
 			camConfig.FFmpegTemplate = config.FFmpegTemplate

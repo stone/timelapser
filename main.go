@@ -10,6 +10,10 @@ import (
 	"github.com/lmittmann/tint"
 	"github.com/mattn/go-isatty"
 	"github.com/robfig/cron/v3"
+	"github.com/stone/timelapser/internal/camera"
+	"github.com/stone/timelapser/internal/config"
+	"github.com/stone/timelapser/internal/snapshot"
+	"github.com/stone/timelapser/internal/timelapse"
 )
 
 // Build information. Populated at build-time using -ldflags
@@ -36,7 +40,7 @@ func main() {
 	}
 
 	if *flagGetConfig {
-		fmt.Println(generateExampleConfig())
+		fmt.Println(config.NewExampleConfig())
 		os.Exit(0)
 	}
 
@@ -58,7 +62,7 @@ func main() {
 	)
 
 	logger.Debug("Opening configuration file", "config", *flagConfigPath)
-	config, err := loadConfig(*flagConfigPath)
+	config, err := config.LoadConfig(*flagConfigPath, logger)
 	if err != nil {
 		logger.Error("Error loading config", "config", *flagConfigPath, "error", err)
 		os.Exit(1)
@@ -71,7 +75,7 @@ func main() {
 	}
 
 	if *flagListCameras {
-		listCameras(config)
+		camera.ListCameras(config)
 		os.Exit(0)
 	}
 
@@ -79,7 +83,7 @@ func main() {
 
 	// Take snapshot of cameras and quit
 	if *flagSnapshot {
-		if err := takeSnapshot(config); err != nil {
+		if err := snapshot.TakeSnapshot(config); err != nil {
 			logger.Error("Error taking snapshot", "error", err)
 			os.Exit(1)
 		}
@@ -87,7 +91,7 @@ func main() {
 	}
 
 	if *flagTimelapse {
-		if err := createAllTimelapse(config); err != nil {
+		if err := timelapse.CreateAllTimelapse(config, logger); err != nil {
 			logger.Error("Error creating timelapse", "error", err)
 			os.Exit(1)
 		}
@@ -109,14 +113,14 @@ func main() {
 
 		logger.Info("Scheduling camera snapshot", "name", camConfig.Name, "interval", interval)
 		crn.AddFunc(interval, func() {
-			if err := takeCameraSnapshot(&camConfig, config.OutputDir); err != nil {
+			if err := snapshot.TakeCameraSnapshot(&camConfig, config.OutputDir, logger); err != nil {
 				logger.Error("Error taking snapshot", "name", camConfig.Name, "error", err)
 			}
 		})
 
 		logger.Info("Scheduling timelapse generation", "name", camConfig.Name, "timelapseInterval", timelapseInterval)
 		crn.AddFunc(timelapseInterval, func() {
-			if err := CreateTimelapse(&camConfig, config.OutputDir); err != nil {
+			if err := timelapse.CreateTimelapse(&camConfig, config.OutputDir, logger); err != nil {
 				logger.Error("Error generating timelapse", "name", camConfig.Name, "error", err)
 			}
 		})

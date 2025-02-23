@@ -1,12 +1,14 @@
-package main
+package timelapse
 
 import (
 	"reflect"
 	"testing"
+
+	"github.com/stone/timelapser/internal/config"
 )
 
 // Sample configuration for testing
-var sampleConfig = &CameraConfig{
+var sampleConfig = &config.CameraConfig{
 	FFmpegTemplate: "-i {{.ListPath}} -y {{.OutputPath}}",
 }
 
