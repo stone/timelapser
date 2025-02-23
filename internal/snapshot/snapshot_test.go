@@ -1,7 +1,9 @@
-package main
+package snapshot
 
 import (
 	"testing"
+
+	"github.com/stone/timelapser/internal/utils"
 )
 
 func Test_toCamelCase(t *testing.T) {
@@ -49,7 +51,7 @@ func Test_toCamelCase(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := toCamelCase(tt.input)
+			got := utils.ToCamelCase(tt.input)
 			if got != tt.expected {
 				t.Errorf("toCamelCase() = %v, want %v", got, tt.expected)
 			}

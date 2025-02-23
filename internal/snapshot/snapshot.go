@@ -1,22 +1,28 @@
-package main
+package snapshot
 
 import (
 	"fmt"
+	"log/slog"
+	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
+	"github.com/stone/timelapser/internal/camera"
+	"github.com/stone/timelapser/internal/config"
+	"github.com/stone/timelapser/internal/utils"
 )
 
-func takeCameraSnapshot(camconfig *CameraConfig, outdir string) error {
+func TakeCameraSnapshot(camconfig *config.CameraConfig, outdir string, logger *slog.Logger) error {
 	if err := os.MkdirAll(outdir, 0o755); err != nil {
 		return fmt.Errorf("failed to create output directory: %v", err)
 	}
-	camera := NewCamera(*camconfig)
-	name := toCamelCase(camconfig.Name)
+	// camera := camera.NewCamera(*camconfig)
+	camera := &camera.Camera{
+		Config: *camconfig,
+		Client: &http.Client{},
+	}
+	name := utils.ToCamelCase(camconfig.Name)
 	logger.Debug("Retrieving snapshot", "name", camconfig.Name)
 
 	cameraDir := filepath.Join(outdir, name)
@@ -24,7 +30,7 @@ func takeCameraSnapshot(camconfig *CameraConfig, outdir string) error {
 		return fmt.Errorf("failed to create camera directory: %v", err)
 	}
 
-	snapshot, err := camera.getSnapshot()
+	snapshot, err := camera.GetSnapshot()
 	if err != nil {
 		return fmt.Errorf("snapshot error for: %s error: %s", camconfig.Name, err)
 	}
@@ -39,14 +45,18 @@ func takeCameraSnapshot(camconfig *CameraConfig, outdir string) error {
 	return nil
 }
 
-func takeSnapshot(config *Config) error {
+func TakeSnapshot(config *config.Config) error {
+	logger := config.Logger
 	if err := os.MkdirAll(config.OutputDir, 0o755); err != nil {
 		return fmt.Errorf("failed to create output directory: %v", err)
 	}
 
 	for _, camConfig := range config.Cameras {
-		camera := NewCamera(camConfig)
-		name := toCamelCase(camConfig.Name)
+		camera := &camera.Camera{
+			Config: camConfig,
+			Client: &http.Client{},
+		}
+		name := utils.ToCamelCase(camConfig.Name)
 		logger.Debug("Retrieving snapshot", "name", camConfig.Name)
 
 		cameraDir := filepath.Join(config.OutputDir, name)
@@ -54,7 +64,7 @@ func takeSnapshot(config *Config) error {
 			return fmt.Errorf("failed to create camera directory: %v", err)
 		}
 
-		snapshot, err := camera.getSnapshot()
+		snapshot, err := camera.GetSnapshot()
 		if err != nil {
 			logger.Error("Snapshot error for", "name", camConfig.Name, "err", err, "continue", true)
 			continue
@@ -69,27 +79,4 @@ func takeSnapshot(config *Config) error {
 	}
 
 	return nil
-}
-
-// Convert names to "safer" paths using camelCase
-// It could be a bit confusing, but it is a simple way to handle
-// spaces in paths.
-// "This is a Test" -> "thisIsATest"
-func toCamelCase(s string) string {
-	words := strings.Fields(s)
-	if len(words) == 0 {
-		return ""
-	}
-
-	var result strings.Builder
-	result.WriteString(strings.ToLower(words[0]))
-
-	caser := cases.Title(language.English)
-
-	for _, word := range words[1:] {
-		// result.WriteString(strings.Title(word))
-		result.WriteString(caser.String(word))
-	}
-
-	return result.String()
 }

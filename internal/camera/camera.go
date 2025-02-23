@@ -1,4 +1,4 @@
-package main
+package camera
 
 import (
 	"crypto/tls"
@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+
+	"github.com/stone/timelapser/internal/config"
+	"github.com/stone/timelapser/internal/utils"
 )
 
 // HTTPClient interface for mocking in tests
@@ -14,24 +17,17 @@ type HTTPClient interface {
 }
 
 type Camera struct {
-	config CameraConfig
-	client HTTPClient
+	Config config.CameraConfig
+	Client HTTPClient
 }
 
-func NewCamera(config CameraConfig) *Camera {
-	return &Camera{
-		config: config,
-		client: &http.Client{},
-	}
-}
-
-func (c *Camera) getSnapshot() ([]byte, error) {
+func (c *Camera) GetSnapshot() ([]byte, error) {
 	req, err := c.prepareRequest()
 	if err != nil {
 		return nil, fmt.Errorf("error preparing request: %v", err)
 	}
 
-	resp, err := c.client.Do(req)
+	resp, err := c.Client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("error making request: %v", err)
 	}
@@ -45,38 +41,38 @@ func (c *Camera) getSnapshot() ([]byte, error) {
 }
 
 func (c *Camera) prepareRequest() (*http.Request, error) {
-	baseURL := c.config.SnapshotURL
+	baseURL := c.Config.SnapshotURL
 
 	req, err := http.NewRequest(http.MethodGet, baseURL, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	if c.config.Insecure {
+	if c.Config.Insecure {
 		http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{
 			InsecureSkipVerify: true,
 		}
 	}
 
 	// Apply authentication
-	switch c.config.Auth.Type {
+	switch c.Config.Auth.Type {
 	case "basic":
 		auth := base64.StdEncoding.EncodeToString(
 			[]byte(fmt.Sprintf("%s:%s",
-				c.config.Auth.Username,
-				c.config.Auth.Password)))
+				c.Config.Auth.Username,
+				c.Config.Auth.Password)))
 		req.Header.Add("Authorization", "Basic "+auth)
 
 	case "bearer":
-		req.Header.Add("Authorization", "Bearer "+c.config.Auth.Token)
+		req.Header.Add("Authorization", "Bearer "+c.Config.Auth.Token)
 	}
 
 	return req, nil
 }
 
-func listCameras(config *Config) {
+func ListCameras(config *config.Config) {
 	for _, camConfig := range config.Cameras {
-		name := toCamelCase(camConfig.Name)
+		name := utils.ToCamelCase(camConfig.Name)
 		fmt.Printf("%s [%s]\n", name, camConfig.Name)
 	}
 }

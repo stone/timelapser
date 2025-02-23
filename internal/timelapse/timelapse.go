@@ -1,8 +1,9 @@
-package main
+package timelapse
 
 import (
 	"bytes"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -10,13 +11,16 @@ import (
 	"strings"
 	"text/template"
 	"time"
+
+	"github.com/stone/timelapser/internal/config"
+	"github.com/stone/timelapser/internal/utils"
 )
 
 // ErrNoSnapshots indicates that no snapshot images were found for processing
 var ErrNoSnapshots = fmt.Errorf("no snapshots found for camera")
 
 // buildFFmpegCommand creates the ffmpeg command string using the provided template
-func buildFFmpegCommand(cfg *CameraConfig, listPath, outputPath string) (string, error) {
+func buildFFmpegCommand(cfg *config.CameraConfig, listPath, outputPath string) (string, error) {
 	tmpl, err := template.New("ffmpeg").Parse(cfg.FFmpegTemplate)
 	if err != nil {
 		return "", fmt.Errorf("parsing ffmpeg template: %w", err)
@@ -36,12 +40,12 @@ func buildFFmpegCommand(cfg *CameraConfig, listPath, outputPath string) (string,
 }
 
 // CreateTimelapse generates a timelapse video from a sequence of images
-func CreateTimelapse(cfg *CameraConfig, outputDir string) error {
+func CreateTimelapse(cfg *config.CameraConfig, outputDir string, logger *slog.Logger) error {
 	if _, err := exec.LookPath("ffmpeg"); err != nil {
 		return fmt.Errorf("ffmpeg not found in PATH: %w", err)
 	}
 
-	name := toCamelCase(cfg.Name)
+	name := utils.ToCamelCase(cfg.Name)
 	folderPath := filepath.Join(outputDir, name)
 
 	// Verify camera directory exists
@@ -65,10 +69,10 @@ func CreateTimelapse(cfg *CameraConfig, outputDir string) error {
 	if err := writeFileList(listPath, name, imageFiles, cfg.FrameDuration); err != nil {
 		return fmt.Errorf("writing file list: %w", err)
 	}
-	defer cleanupFile(listPath)
+	defer cleanupFile(listPath, logger)
 
 	t1 := time.Now()
-	if err := executeFFmpeg(cfg, listPath, outputPath); err != nil {
+	if err := executeFFmpeg(cfg, listPath, outputPath, logger); err != nil {
 		return err
 	}
 	elapsed := time.Since(t1)
@@ -137,7 +141,7 @@ func writeFileList(listPath, name string, imageFiles []string, frameDuration flo
 	return os.WriteFile(listPath, []byte(fileList.String()), 0o644)
 }
 
-func executeFFmpeg(cfg *CameraConfig, listPath, outputPath string) error {
+func executeFFmpeg(cfg *config.CameraConfig, listPath, outputPath string, logger *slog.Logger) error {
 	cmdStr, err := buildFFmpegCommand(cfg, listPath, outputPath)
 	if err != nil {
 		return fmt.Errorf("building ffmpeg command: %w", err)
@@ -153,7 +157,7 @@ func executeFFmpeg(cfg *CameraConfig, listPath, outputPath string) error {
 	return nil
 }
 
-func cleanupFile(path string) {
+func cleanupFile(path string, logger *slog.Logger) {
 	if err := os.Remove(path); err != nil {
 		logger.Info("failed to remove temporary file",
 			"path", path,
@@ -176,11 +180,11 @@ func cleanupImages(folderPath string, imageFiles []string) error {
 	return nil
 }
 
-func createAllTimelapse(config *Config) error {
+func CreateAllTimelapse(config *config.Config, logger *slog.Logger) error {
 	for _, camConfig := range config.Cameras {
 		// we do not want to delete the original images when manually creating timelapse.
 		camConfig.Delete = false
-		if err := CreateTimelapse(&camConfig, config.OutputDir); err != nil {
+		if err := CreateTimelapse(&camConfig, config.OutputDir, logger); err != nil {
 			return err
 		}
 	}
