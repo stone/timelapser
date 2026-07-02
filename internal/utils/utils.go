@@ -23,7 +23,6 @@ func ToCamelCase(s string) string {
 	caser := cases.Title(language.English)
 
 	for _, word := range words[1:] {
-		// result.WriteString(strings.Title(word))
 		result.WriteString(caser.String(word))
 	}
 

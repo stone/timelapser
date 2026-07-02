@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"sync"
 
 	"github.com/lmittmann/tint"
 	"github.com/mattn/go-isatty"
@@ -40,7 +41,12 @@ func main() {
 	}
 
 	if *flagGetConfig {
-		fmt.Println(config.NewExampleConfig())
+		example, err := config.NewExampleConfig()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error generating example config: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println(example)
 		os.Exit(0)
 	}
 
@@ -51,6 +57,9 @@ func main() {
 	case "DEBUG":
 		loglevel = slog.LevelDebug
 	case "INFO":
+		loglevel = slog.LevelInfo
+	default:
+		fmt.Fprintf(os.Stderr, "unknown log level %q, defaulting to INFO\n", *flagLogLevel)
 		loglevel = slog.LevelInfo
 	}
 
@@ -98,21 +107,23 @@ func main() {
 		os.Exit(0)
 	}
 
+	// Per-camera mutex prevents the snapshot writer and timelapse reader/deleter
+	// from running concurrently against the same camera directory.
+	camLocks := make(map[string]*sync.Mutex)
+	for i := range config.Cameras {
+		camLocks[config.Cameras[i].Name] = &sync.Mutex{}
+	}
+
 	// Schedule snapshots
 	for _, camConfig := range config.Cameras {
-		// Simple way of picking up default inteval or use camera specific interval
-		timelapseInterval := config.TimelapseInterval
-		if camConfig.TimelapseInterval != "" {
-			timelapseInterval = camConfig.TimelapseInterval
-		}
-
-		interval := config.Interval
-		if camConfig.Interval != "" {
-			interval = camConfig.Interval
-		}
+		interval := camConfig.Interval
+		timelapseInterval := camConfig.TimelapseInterval
+		mu := camLocks[camConfig.Name]
 
 		logger.Info("Scheduling camera snapshot", "name", camConfig.Name, "interval", interval)
 		crn.AddFunc(interval, func() {
+			mu.Lock()
+			defer mu.Unlock()
 			if err := snapshot.TakeCameraSnapshot(&camConfig, config.OutputDir, logger); err != nil {
 				logger.Error("Error taking snapshot", "name", camConfig.Name, "error", err)
 			}
@@ -120,11 +131,12 @@ func main() {
 
 		logger.Info("Scheduling timelapse generation", "name", camConfig.Name, "timelapseInterval", timelapseInterval)
 		crn.AddFunc(timelapseInterval, func() {
+			mu.Lock()
+			defer mu.Unlock()
 			if err := timelapse.CreateTimelapse(&camConfig, config.OutputDir, logger); err != nil {
 				logger.Error("Error generating timelapse", "name", camConfig.Name, "error", err)
 			}
 		})
-
 	}
 
 	// Start the scheduler

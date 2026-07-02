@@ -11,7 +11,7 @@ import (
 const (
 	defaultOutputDir         = "/tmp"
 	defaultInterval          = "*/5 * * * *"
-	defaultTimelapseInterval = "*/60 * * * *"
+	defaultTimelapseInterval = "0 * * * *"
 	defaultFrameDuration     = 0.0416667
 	defaultFFmpegTemplate    = "ffmpeg -f concat -safe 0 -i {{.ListPath}} -vf fps=24,format=yuv420p -c:v libx264 -preset medium -crf 23 -movflags +faststart -y {{.OutputPath}}"
 )
@@ -42,7 +42,7 @@ type Config struct {
 	TimelapseInterval string         `yaml:"timelapseInterval"`
 	FrameDuration     float64        `yaml:"frameDuration"`
 	FFmpegTemplate    string         `yaml:"ffmpeg_template"`
-	Logger            *slog.Logger
+	Logger            *slog.Logger   `yaml:"-"`
 }
 
 func newDefaultConfig() Config {
@@ -56,9 +56,8 @@ func newDefaultConfig() Config {
 	}
 }
 
-func NewExampleConfig() string {
+func NewExampleConfig() (string, error) {
 	config := newDefaultConfig()
-	// Create example CameraConfig struct with default values
 	cameraConfig := CameraConfig{
 		Name:        "camera1",
 		SnapshotURL: "http://localhost:8080/snapshot",
@@ -69,10 +68,10 @@ func NewExampleConfig() string {
 
 	data, err := yaml.Marshal(config)
 	if err != nil {
-		return fmt.Sprintf("error creating example configuration: %s", err.Error())
+		return "", fmt.Errorf("marshalling example config: %w", err)
 	}
 
-	return string(data)
+	return string(data), nil
 }
 
 func LoadConfig(path string, logger *slog.Logger) (*Config, error) {
@@ -90,37 +89,31 @@ func LoadConfig(path string, logger *slog.Logger) (*Config, error) {
 		return nil, fmt.Errorf("error parsing config file: %v", err)
 	}
 
-	if err := applyDefaultsToCameras(&config); err != nil {
-		return nil, fmt.Errorf("error applying defaults to cameras: %v", err)
-	}
+	applyDefaultsToCameras(&config)
 
 	return &config, nil
 }
 
-func applyDefaultsToCameras(config *Config) error {
+func applyDefaultsToCameras(config *Config) {
 	for i := range config.Cameras {
 		camConfig := &config.Cameras[i]
+		if camConfig.Interval == "" {
+			camConfig.Interval = config.Interval
+		}
 		if camConfig.TimelapseInterval == "" {
 			config.Logger.Debug("Setting defaults for camera", "name", camConfig.Name,
-				"from", camConfig.TimelapseInterval,
-				"to", config.TimelapseInterval)
+				"timelapseInterval", config.TimelapseInterval)
 			camConfig.TimelapseInterval = config.TimelapseInterval
 		}
-
 		if camConfig.FrameDuration == 0 {
 			config.Logger.Debug("Setting defaults for camera", "name", camConfig.Name,
-				"from", camConfig.FrameDuration,
-				"to", config.FrameDuration)
+				"frameDuration", config.FrameDuration)
 			camConfig.FrameDuration = config.FrameDuration
 		}
-
 		if camConfig.FFmpegTemplate == "" {
 			config.Logger.Debug("Setting defaults for camera", "name", camConfig.Name,
-				"from", camConfig.FFmpegTemplate,
-				"to", config.FFmpegTemplate)
+				"ffmpegTemplate", config.FFmpegTemplate)
 			camConfig.FFmpegTemplate = config.FFmpegTemplate
 		}
-
 	}
-	return nil
 }

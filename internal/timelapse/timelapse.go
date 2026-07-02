@@ -2,12 +2,12 @@ package timelapse
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"sort"
 	"strings"
 	"text/template"
 	"time"
@@ -17,7 +17,7 @@ import (
 )
 
 // ErrNoSnapshots indicates that no snapshot images were found for processing
-var ErrNoSnapshots = fmt.Errorf("no snapshots found for camera")
+var ErrNoSnapshots = errors.New("no snapshots found for camera")
 
 // buildFFmpegCommand creates the ffmpeg command string using the provided template
 func buildFFmpegCommand(cfg *config.CameraConfig, listPath, outputPath string) (string, error) {
@@ -96,27 +96,22 @@ func CreateTimelapse(cfg *config.CameraConfig, outputDir string, logger *slog.Lo
 	return nil
 }
 
+// collectImageFiles returns image filenames from folderPath sorted by name.
+// os.ReadDir returns entries in lexicographic order; since snapshot filenames
+// are Unix nanosecond timestamps this equals chronological order.
 func collectImageFiles(folderPath string) ([]string, error) {
 	entries, err := os.ReadDir(folderPath)
 	if err != nil {
 		return nil, fmt.Errorf("reading directory: %w", err)
 	}
 
-	var imageFiles []string
+	var names []string
 	for _, entry := range entries {
 		if isImageFile(entry) {
-			imageFiles = append(imageFiles, entry.Name())
+			names = append(names, entry.Name())
 		}
 	}
-
-	// Sort files by modification time
-	sort.Slice(imageFiles, func(i, j int) bool {
-		iInfo, _ := os.Stat(filepath.Join(folderPath, imageFiles[i]))
-		jInfo, _ := os.Stat(filepath.Join(folderPath, imageFiles[j]))
-		return iInfo.ModTime().Before(jInfo.ModTime())
-	})
-
-	return imageFiles, nil
+	return names, nil
 }
 
 func isImageFile(entry os.DirEntry) bool {
@@ -141,16 +136,25 @@ func writeFileList(listPath, name string, imageFiles []string, frameDuration flo
 	return os.WriteFile(listPath, []byte(fileList.String()), 0o644)
 }
 
+// executeFFmpeg runs ffmpeg by splitting the template-built command string into
+// arguments and exec'ing directly — no shell involved, so camera names with
+// shell metacharacters cannot inject commands.
 func executeFFmpeg(cfg *config.CameraConfig, listPath, outputPath string, logger *slog.Logger) error {
 	cmdStr, err := buildFFmpegCommand(cfg, listPath, outputPath)
 	if err != nil {
 		return fmt.Errorf("building ffmpeg command: %w", err)
 	}
 
-	cmd := exec.Command("sh", "-c", cmdStr)
+	args := strings.Fields(cmdStr)
+	if len(args) == 0 {
+		return fmt.Errorf("empty ffmpeg command")
+	}
+
+	cmd := exec.Command(args[0], args[1:]...)
 	logger.Debug("executing ffmpeg", "command", cmd.String())
 
 	if output, err := cmd.CombinedOutput(); err != nil {
+		os.Remove(outputPath) // remove partial output file
 		return fmt.Errorf("ffmpeg execution failed: %w (%s)", err, output)
 	}
 
@@ -181,12 +185,14 @@ func cleanupImages(folderPath string, imageFiles []string) error {
 }
 
 func CreateAllTimelapse(config *config.Config, logger *slog.Logger) error {
+	var errs []error
 	for _, camConfig := range config.Cameras {
 		// we do not want to delete the original images when manually creating timelapse.
 		camConfig.Delete = false
 		if err := CreateTimelapse(&camConfig, config.OutputDir, logger); err != nil {
-			return err
+			logger.Error("Error creating timelapse", "name", camConfig.Name, "error", err)
+			errs = append(errs, fmt.Errorf("%s: %w", camConfig.Name, err))
 		}
 	}
-	return nil
+	return errors.Join(errs...)
 }

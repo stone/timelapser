@@ -21,6 +21,18 @@ type Camera struct {
 	Client HTTPClient
 }
 
+func NewCamera(cfg config.CameraConfig) *Camera {
+	client := &http.Client{}
+	if cfg.Insecure {
+		client = &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			},
+		}
+	}
+	return &Camera{Config: cfg, Client: client}
+}
+
 func (c *Camera) GetSnapshot() ([]byte, error) {
 	req, err := c.prepareRequest()
 	if err != nil {
@@ -41,17 +53,9 @@ func (c *Camera) GetSnapshot() ([]byte, error) {
 }
 
 func (c *Camera) prepareRequest() (*http.Request, error) {
-	baseURL := c.Config.SnapshotURL
-
-	req, err := http.NewRequest(http.MethodGet, baseURL, nil)
+	req, err := http.NewRequest(http.MethodGet, c.Config.SnapshotURL, nil)
 	if err != nil {
 		return nil, err
-	}
-
-	if c.Config.Insecure {
-		http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{
-			InsecureSkipVerify: true,
-		}
 	}
 
 	// Apply authentication
